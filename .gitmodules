@@ -1,0 +1,3 @@
+[submodule "plugins"]
+	path = plugins
+	url = git://adorsaz.ch/leed-market_/leed-market.git
