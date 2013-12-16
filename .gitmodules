@@ -1,4 +1,4 @@
 [submodule "plugins"]
 	path = plugins
-	url = gitolite@adorsaz.ch:leed-market.git
-	branch = epub
+	url = git://adorsaz.ch/leed-market_/leed-market.git
+	branch = master
