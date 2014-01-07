@@ -26,20 +26,35 @@ class User extends MysqlEntity{
 		$this->id = $id;
 	}
 
-	function exist($login,$password){
+	function exist($login,$password,$salt=''){
 		$userManager = new User();
-		return $userManager->load(array('login'=>$login,'password'=>User::encrypt($password)));
+		return $userManager->load(array('login'=>$login,'password'=>User::encrypt($password,$salt)));
 	}
 
-	function existAuthToken($auth){
+	function getToken() {
+		assert('!empty($this->password)');
+		assert('!empty($this->login)');
+		return sha1($this->password.$this->login);
+	}
+
+	function existAuthToken($auth=null){
 		$result = false;
 		$userManager = new User();
 		$users = $userManager->populate('id');
+		if (empty($auth)) $auth = @$_COOKIE['leedStaySignedIn'];
 		foreach($users as $user){
-		
-			if(sha1($user->getPassword().$user->getLogin())==$auth) $result = $user;
+			if($user->getToken()==$auth) $result = $user;
 		}
 		return $result;
+	}
+
+	function setStayConnected() {
+		///@TODO: set the current web directory, here and on del
+		setcookie('leedStaySignedIn', $this->getToken(), time()+31536000);
+	}
+	
+	static function delStayConnected() {
+		setcookie('leedStaySignedIn', '', -1);
 	}
 	
 	function getId(){
@@ -58,14 +73,17 @@ class User extends MysqlEntity{
 		return $this->password;
 	}
 
-	function setPassword($password){
-		$this->password = User::encrypt($password);
+	function setPassword($password,$salt=''){
+		$this->password = User::encrypt($password,$salt);
 	}
 
-	static function encrypt($password){
-		return sha1($password);
+	static function encrypt($password, $salt=''){
+		return sha1($password.$salt);
 	}
 
+	static function generateSalt() {
+		return ''.mt_rand().mt_rand();
+	}
 
 }
 

@@ -96,8 +96,6 @@ $pagesArray = array();
 						$startArticle = ($page-1)*$articlePerPages;
 						$events = $eventManager->loadAllOnlyColumn($target,array('favorite'=>1),'pubDate DESC',$startArticle.','.$articlePerPages);
 						$tpl->assign('numberOfItem',$numberOfItem);
-
-
 					break;
 
 					/* AFFICHAGE DES EVENEMENTS NON LUS (COMPORTEMENT PAR DEFAUT) */
@@ -105,7 +103,7 @@ $pagesArray = array();
 					default:
 						$numberOfItem = $eventManager->rowCount(array('unread'=>1));
 						$page = (isset($_['page'])?$_['page']:1);
-						$pages = ceil($numberOfItem/$articlePerPages); 
+						$pages = ($articlePerPages>0?ceil($numberOfItem/$articlePerPages):1); 
 						$startArticle = ($page-1)*$articlePerPages;
 						if($articleDisplayHomeSort) {$order = 'pubdate desc';} else {$order = 'pubdate asc';}
 						$events = $eventManager->loadAllOnlyColumn($target,array('unread'=>1),$order,$startArticle.','.$articlePerPages);
@@ -128,6 +126,7 @@ $pagesArray = array();
 				$tpl->assign('events',$events);
 				$tpl->assign('time',$_SERVER['REQUEST_TIME']);
 				$tpl->assign('hightlighted',0);
+				$tpl->assign('scroll',false);
 
 $view = 'index';
 require_once('footer.php'); 

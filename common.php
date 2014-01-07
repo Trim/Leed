@@ -6,11 +6,15 @@
  @description: Page incluse dans tous (ou presque) les fichiers du projet, inclus les entitées SQL et récupère/traite les variables de requetes
  */
 
+$cookiedir = '';
+if(dirname($_SERVER['SCRIPT_NAME'])!='/') $cookiedir=dirname($_SERVER["SCRIPT_NAME"]).'/';
+session_set_cookie_params(0, $cookiedir);
 session_start();
 mb_internal_encoding('UTF-8'); // UTF8 pour fonctions mb_*
 $start=microtime(true);
 require_once('constant.php');
 require_once('RainTPL.php');
+require_once('i18n.php');
 class_exists('Plugin') or require_once('Plugin.class.php');
 class_exists('MysqlEntity') or require_once('MysqlEntity.class.php');
 class_exists('Feed') or require_once('Feed.class.php');
@@ -31,12 +35,9 @@ $myUser = (isset($_SESSION['currentUser'])?unserialize($_SESSION['currentUser'])
 $feedManager = new Feed();
 $eventManager = new Event();
 $userManager = new User();
+if (empty($myUser)) $myUser = $userManager->existAuthToken();
 $folderManager = new Folder();
 $configurationManager = new Configuration();
-
-
-
-
 $conf = $configurationManager->getAll();
 
 //Instanciation du template
@@ -46,14 +47,17 @@ raintpl::configure("base_url", null );
 raintpl::configure("tpl_dir", './templates/'.DEFAULT_THEME.'/' );
 raintpl::configure("cache_dir", "./cache/tmp/" );
 
+i18n_init();
+
+
 $view = '';
+$tpl->assign('i18n_js',$i18n_js);
 $tpl->assign('myUser',$myUser);
 $tpl->assign('feedManager',$feedManager);
 $tpl->assign('eventManager',$eventManager);
 $tpl->assign('userManager',$userManager);
 $tpl->assign('folderManager',$folderManager);
 $tpl->assign('configurationManager',$configurationManager);
-
 $tpl->assign('synchronisationCode',$configurationManager->get('synchronisationCode'));
 
 //Récuperation et sécurisation de toutes les variables POST et GET
