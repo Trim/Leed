@@ -8,7 +8,7 @@
 
 class Feed extends MysqlEntity{
 
-    protected $id,$name,$url,$events=array(),$description,$website,$folder,$lastupdate;
+    protected $id,$name,$url,$events=array(),$description,$website,$folder,$lastupdate,$isverbose;
     protected $TABLE_NAME = 'feed';
     protected $CLASS_NAME = 'Feed';
     protected $object_fields =
@@ -19,7 +19,8 @@ class Feed extends MysqlEntity{
         'website'=>'longstring',
         'url'=>'longstring',
         'lastupdate'=>'string',
-        'folder'=>'integer'
+        'folder'=>'integer',
+        'isverbose'=>'boolean',
     );
 
     protected $object_fields_index =
@@ -75,7 +76,7 @@ class Feed extends MysqlEntity{
         $feed->enable_cache($enableCache);
         $feed->force_feed($forceFeed);
         $feed->set_feed_url($this->url);
-        $feed->set_useragent('Mozilla/4.0 Leed (LightFeed Agrgegator) '.VERSION_NAME.' by idleman http://projet.idleman.fr/leed');
+        $feed->set_useragent('Mozilla/4.0 Leed (LightFeed Aggregator) '.VERSION_NAME.' by idleman http://projet.idleman.fr/leed');
         if (!$feed->init()) {
             $this->error = $feed->error;
             $this->lastupdate = $_SERVER['REQUEST_TIME'];
@@ -283,6 +284,14 @@ class Feed extends MysqlEntity{
 
     function setLastupdate($lastupdate){
         $this->lastupdate = $lastupdate;
+    }
+
+    function getIsverbose(){
+        return $this->isverbose;
+    }
+
+    function setIsverbose($isverbose){
+        $this->isverbose = $isverbose;
     }
 
     /** @returns vrai si l'url n'est pas déjà connue .*/

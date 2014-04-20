@@ -23,6 +23,11 @@ $tpl->assign('articleDisplayHomeSort', $configurationManager->get('articleDispla
 $tpl->assign('articleDisplayFolderSort', $configurationManager->get('articleDisplayFolderSort'));
 $tpl->assign('articleDisplayContent', $configurationManager->get('articleDisplayContent'));
 $tpl->assign('articleView', $configurationManager->get('articleView'));
+$tpl->assign('optionFeedIsVerbose', $configurationManager->get('optionFeedIsVerbose'));
+
+//Suppression de l'état des plugins inexistants
+Plugin::pruneStates();
+
 //Récuperation des plugins
 $tpl->assign('plugins',Plugin::getAll());
 

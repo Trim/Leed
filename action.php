@@ -361,7 +361,9 @@ switch ($action){
                 (isset($_['newUrlCategory'])?$_['newUrlCategory']:1)
             );
             $newFeed->save();
-            $newFeed->parse(time(), $_, true);
+            $enableCache = ($configurationManager->get('synchronisationEnableCache')=='')?0:$configurationManager->get('synchronisationEnableCache');
+            $forceFeed = ($configurationManager->get('synchronisationForceFeed')=='')?0:$configurationManager->get('synchronisationForceFeed');
+            $newFeed->parse(time(), $_, $enableCache, $forceFeed);
         }
         header('location: ./settings.php#manageBloc');
     break;
@@ -487,19 +489,24 @@ switch ($action){
             } else {
                 $resetPassword = $_['password'];
                 assert('!empty($resetPassword)');
-                $id = User::get($_['login'])->getId();
-                $salt = $configurationManager->get('cryptographicSalt');
-                $userManager->change(
-                    array('password'=>User::encrypt($resetPassword, $salt)),
-                    array('id'=>$id)
-                );
-                $message = "User (id=$id) Password reset to '$resetPassword'.";
+                $tmpUser = User::get($_['login']);
+                if (false===$tmpUser) {
+                    $message = "Unknown user '{$_['login']}'! No password reset.";
+                } else {
+                    $id = $tmpUser->getId();
+                    $salt = $configurationManager->get('cryptographicSalt');
+                    $userManager->change(
+                        array('password'=>User::encrypt($resetPassword, $salt)),
+                        array('id'=>$id)
+                    );
+                    $message = "User '{$_['login']}' (id=$id) Password reset to '$resetPassword'.";
+                }
             }
             error_log($message);
         }
 
         if(isset($_['usr'])){
-            $user = $userManager->existAuthToken($_['usr']);
+            $user = User::existAuthToken($_['usr']);
             if($user==false){
                 exit("erreur identification : le compte est inexistant");
             }else{
@@ -555,6 +562,36 @@ switch ($action){
         }
         $configurationManager->put('displayOnlyUnreadFeedFolder',$_['displayOnlyUnreadFeedFolder']);
     break;
+
+    case 'displayFeedIsVerbose':
+        if($myUser==false) {
+            $response_array['status'] = 'noconnect';
+            $response_array['texte'] = _t('YOU_MUST_BE_CONNECTED_ACTION');
+            header('Content-type: application/json');
+            echo json_encode($response_array);
+            exit();
+        }
+        // changement du statut isverbose du feed
+        $feed = new Feed();
+        $feed = $feed->getById($_['idFeed']);
+        $feed->setIsverbose(($_['displayFeedIsVerbose']=="0"?1:0));
+        $feed->save();
+        break;
+
+    case 'optionFeedIsVerbose':
+        if($myUser==false) {
+            $response_array['status'] = 'noconnect';
+            $response_array['texte'] = _t('YOU_MUST_BE_CONNECTED_ACTION');
+            header('Content-type: application/json');
+            echo json_encode($response_array);
+            exit();
+        }
+        // changement du statut de l'option
+        $configurationManager = new Configuration();
+        $conf = $configurationManager->getAll();
+        $configurationManager->put('optionFeedIsVerbose',($_['optionFeedIsVerbose']=="0"?0:1));
+
+        break;
 
     default:
         require_once("SimplePie.class.php");

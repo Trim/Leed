@@ -299,7 +299,7 @@ class MysqlEntity
             return $objects;
     }
 
-        public function loadAllOnlyColumn($selColumn,$columns,$order=null,$limit=null,$operation="=",$debug=false){
+    public function loadAllOnlyColumn($selColumn,$columns,$order=null,$limit=null,$operation="=",$debug=false){
         $objects = $this->loadAll($columns,$order,$limit,$operation,$debug,$selColumn);
         if(count($objects)==0)$objects = array();
         return $objects;
@@ -430,6 +430,17 @@ class MysqlEntity
 
     public function getObject_fields(){
         return $this->object_fields;
+    }
+
+    /**
+    * @return <boolean> VRAI si la table existe, FAUX sinon
+    */
+
+    public function tableExists() {
+        $table = MYSQL_PREFIX.$this->TABLE_NAME;
+        $result = $this->customQuery("SHOW TABLES LIKE '$table'");
+        $assoc = mysql_fetch_assoc($result);
+        return false===$assoc ? false : true;
     }
 }
 ?>

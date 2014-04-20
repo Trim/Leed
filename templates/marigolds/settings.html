@@ -14,17 +14,18 @@
                 <aside>
                     <h3>{function="_t('FEED_OPTION')"}</h3>
                     <ul>
-
-
-                            <li><a class="toggle" href="#manageBloc">{function="_t('FEED_MANAGING')"}</a></li>
-                            <li><a class="toggle" href="#synchronizeBloc">{function="_t('MANUAL_FEED_UPDATE')"}</a></li>
-                            <li><a class="toggle" href="#preferenceBloc">{function="_t('PREFERENCES')"}</a></li>
-                            <li><a class="toggle" href="#importBloc">{function="_t('IMPORT')"}</a></li>
-                            <li><a class="toggle" href="#exportBloc">{function="_t('EXPORT')"}</a></li>
-                            <li><a class="toggle" href="#bookBloc">{function="_t('BOOKMARKLET')"}</a></li>
-                            <li><a class="toggle" href="#pluginBloc">{function="_t('AVAILABLES_PLUGINS')"}</a></li>
-                            <li class="pointer" onclick="if(confirm('{function="_t('CONFIRM_TRASH_EVENTS')"}')){window.location='action.php?action=purge';}">{function="_t('TRASH_EVENTS')"}</li>
-                            {function="Plugin::callHook("setting_post_link", array(&$myUser))"}
+                        <li><a class="toggle" href="#manageBloc">{function="_t('FEED_MANAGING')"}</a></li>
+                        <li><a class="toggle" href="#synchronizeBloc">{function="_t('MANUAL_FEED_UPDATE')"}</a></li>
+                        <li><a class="toggle" href="#preferenceBloc">{function="_t('PREFERENCES')"}</a></li>
+                        <li><a class="toggle" href="#importBloc">{function="_t('IMPORT')"}</a></li>
+                        <li><a class="toggle" href="#exportBloc">{function="_t('EXPORT')"}</a></li>
+                        <li><a class="toggle" href="#bookBloc">{function="_t('BOOKMARKLET')"}</a></li>
+                        <li><a class="toggle" href="#pluginBloc">{function="_t('AVAILABLES_PLUGINS')"}</a></li>
+                        <li class="pointer" onclick="if(confirm('{function="_t('CONFIRM_TRASH_EVENTS')"}')){window.location='action.php?action=purge';}">{function="_t('TRASH_EVENTS')"}</li>
+                    </ul>
+                    <h3>{function="_t('PLUGINS_INSTALLED')"}</h3>
+                    <ul>
+                        {function="Plugin::callHook("setting_post_link", array(&$myUser))"}
                     </ul>
                 </aside>
             </div>
@@ -58,6 +59,16 @@
 
                 </section>
 
+                <section class="addBloc">
+                    <h3>{function="_t('FEED_OPTION')"}</h3>
+                    <span>{function="_t('FEED_OPTION_ISVERBOSE')"}</span>
+                    {if="$optionFeedIsVerbose==0"}
+                    <input class="" onclick="toggleOptionFeedVerbose(this,1)" type="checkbox" checked>
+                    {else}
+                    <input class="" onclick="toggleOptionFeedVerbose(this,0)" type="checkbox">
+                    {/if}
+                </section>
+
                     <ul class="clear nochip">
                     {$feedsForFolder=""}
                     {loop="$folders"}
@@ -75,23 +86,41 @@
 <div class="clear"></div>
                         </h1>
 <div class="clear"></div>
-                        <table  style="width:100%;table-layout:fixed;" >
+                        <ul class="feedsList">
                             {if="count($feeds)!=0"}
                             {loop="$feedsForFolder"}
-                                <tr>
-                                    <td style="width:50%;word-wrap:break-word"><a href="index.php?action=selectedFeed&feed={$value2->getId();}">{function="Functions::truncate($value2->getName(),40)"}</a><a href="{$value2->getUrl()}" class="underlink">{$value2->getUrl()}</a></td>
-                                    <td>
-                                        <select onchange="changeFeedFolder(this,{$value2->getId()});">
+                                <li class="feedListItem">
+                                    <span class="feedTitle js-feedTitle">
+                                        <a href="index.php?action=selectedFeed&feed={$value2->getId();}">{function="Functions::truncate($value2->getName(),40)"}</a><a href="{$value2->getUrl()}" class="underlink">{$value2->getUrl()}</a>
+                                    </span>
+                                    <div class="feedButtons">
+                                        <button class="feedRename" onclick="renameFeed(this,{$value2->getId()})">{function="_t('RENAME')"}</button>
+                                        <button class="feedDelete" onclick="if(confirm('{function="_t('CONFIRM_DELETE_FEED')"}')){window.location='action.php?action=removeFeed&id={$value2->getId()}';}">{function="_t('DELETE')"}</button>
+                                    </div>
+                                    <div class="feedAction"">
+                                        <select class="feedFolder" onchange="changeFeedFolder(this,{$value2->getId()});">
                                             {loop="$folders"}
-                                                <option {if="$value2->getFolder()==$value3->getId()"}selected="selected"{/if} value="{$value3->getId()}">{$value3->getName()}</option>
+                                            <option {if="$value2->getFolder()==$value3->getId()"}selected="selected"{/if} value="{$value3->getId()}">{$value3->getName()}</option>
                                             {/loop}
                                         </select>
-                                    </td>
-                                    <td><button onclick="renameFeed(this,{$value2->getId()})">{function="_t('RENAME')"}</button></td>
-                                    <td><button onclick="if(confirm('{function="_t('CONFIRM_DELETE_FEED')"}')){window.location='action.php?action=removeFeed&id={$value2->getId()}';}">{function="_t('DELETE')"}</button></td></tr>
+                                        {if="$optionFeedIsVerbose==0"}
+                                            {if="$value2->getIsverbose()==0"}
+                                            <input class="feedVerbose" onclick="toggleFeedVerbose(this,{$value2->getIsverbose()},{$value2->getId()})" type="checkbox" title="{function="_t('HIDE_FEED_IS_VERBOSE')"}">
+                                            {else}
+                                            <input class="feedVerbose" onclick="toggleFeedVerbose(this,{$value2->getIsverbose()},{$value2->getId()})" type="checkbox" title="{function="_t('HIDE_FEED_IS_VERBOSE')"}" checked>
+                                            {/if}
+                                        {else}
+                                            {if="$value2->getIsverbose()==0"}
+                                            <input class="feedVerbose" style="display: none;" onclick="toggleFeedVerbose(this,{$value2->getIsverbose()},{$value2->getId()})" type="checkbox" title="{function="_t('HIDE_FEED_IS_VERBOSE')"}">
+                                            {else}
+                                            <input class="feedVerbose" style="display: none;" onclick="toggleFeedVerbose(this,{$value2->getIsverbose()},{$value2->getId()})" type="checkbox" title="{function="_t('HIDE_FEED_IS_VERBOSE')"}" checked>
+                                            {/if}
+                                        {/if}
+                                    </div>
+                                </li>
                             {/loop}
                             {/if}
-                        </table>
+                        </ul>
                     </li>
                     {/loop}
                 </ul>
@@ -115,7 +144,7 @@
                     <section>
                         <h3>{function="_t('USER')"}</h3>
                         <p><label for="login">{function="_t('LOGIN')"} :</label> <input type="text" id="login" name="login" value="{$myUser->getLogin()}"></p>
-                        <p><label for="password">{function="_t('PASSWORD')"} :</label> <input type="text" id="password" name="password" autocomplete="off" value="" placeholder="(sera affiché en clair)"></p>
+                        <p><label for="password">{function="_t('PASSWORD')"} :</label> <input type="text" id="password" name="password" autocomplete="off" value="" placeholder="{function="_t('INSTALL_DISPLAY_CLEAR')"}"></p>
                         <h4>{function="_t('LET_EMPTY_IF_NO_PASS_CHANGE')"}</h4>
                         <h4>{function="_t('HOWTO_RESET_PASSWORD')"}</h4>
                     </section>
@@ -125,7 +154,6 @@
                         <p><input type="radio"  {if="$synchronisationType=='auto'"} checked="checked" {/if} value="auto" id="synchronisationTypeComplete" name="synchronisationType"> <label for="synchronisationTypeComplete"><strong>
                             {function="_t('AUTOMATIC_FULL')"} :</strong></label> {function="_t('AUTOMATIC_FULL_DESC')"}</p>
                         <p><input type="radio" {if=" $synchronisationType=='graduate'"} checked="checked" {/if}  value="graduate" id="synchronisationTypeGraduated" name="synchronisationType"> <label for="synchronisationTypeGraduated"><strong>{function="_t('AUTOMATIC_GRADUATE')"} :</strong></label> {function="_t('AUTOMATIC_GRADUATE_DESC')"}</p>
-                        <p><input type="radio" {if="$synchronisationType=='manual'"} checked="checked" {/if}  value="manual" id="synchronisationTypeManual" name="synchronisationType"> <label for="synchronisationTypeManual"><strong>{function="_t('MANUAL_FULL')"} :</strong></label> {function="_t('MANUAL_FULL_DESC')"}</p>
 
                         <p><strong>{function="_t('SYNCHRONISATION_CODE')"} :</strong>
                         {$synchronisationCode}
@@ -241,7 +269,7 @@
                 <section class="pluginBloc">
                     <h2>{function="_t('PLUGINS')"} :</h2>
                     <p>{function="_t('CAN_DOWNLOAD_PLUGINS')"} : <a href="https://github.com/ldleman/Leed-market/"> Leed Market</a>.</p>
-                    <p>{function="_t('AVAILABLE_PLUGIN_LIST')"} :</p>
+                    <h3>{function="_t('AVAILABLE_PLUGIN_LIST')"} :</h3>
                     {if="$myUser!=false"}
                     <ul class="pluginList">
                     {if="count($plugins)==0"}

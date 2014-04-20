@@ -7,6 +7,7 @@
  */
 
 class Plugin{
+
     const FOLDER = '/plugins';
     protected $name,$author,$mail,$link,$licence,$path,$description,$version,$state,$type;
 
@@ -14,12 +15,15 @@ class Plugin{
     }
 
     public static function includeAll(){
+        global $i18n, $i18n_js;
         $pluginFiles = Plugin::getFiles(true);
         if(is_array($pluginFiles)) {
             foreach($pluginFiles as $pluginFile) {
-                //Inclusion du coeur de plugin
+                // Chargement du fichier de Langue du plugin
+                $i18n->append(new Translation(dirname($pluginFile)));
+                // Inclusion du coeur de plugin
                 include $pluginFile;
-                //Gestion des css du plugin en fonction du thème actif
+                // Gestion des css du plugin en fonction du thème actif
                 $cssTheme = glob(dirname($pluginFile).'/*/'.DEFAULT_THEME.'.css');
                 $cssDefault = glob(dirname($pluginFile).'/*/default.css');
                 if(isset($cssTheme[0])){
@@ -29,6 +33,7 @@ class Plugin{
                 }
             }
         }
+        $i18n_js = $i18n->getJson();
     }
 
     private static function getStates(){
@@ -39,6 +44,24 @@ class Plugin{
     private static function setStates($states){
         $stateFile = dirname(__FILE__).Plugin::FOLDER.'/plugins.states.json';
         file_put_contents($stateFile,json_encode($states));
+    }
+    public static function pruneStates() {
+        $statesBefore = self::getStates();
+        if(empty($statesBefore))
+            $statesBefore = array();
+
+        $statesAfter = array();
+        $error = false;
+        if (is_array($statesBefore))
+        {
+            foreach($statesBefore as $file=>$state) {
+                if (file_exists($file))
+                    $statesAfter[$file] = $state;
+                else
+                    $error = true;
+            }
+        }
+        if ($error) self::setStates($statesAfter);
     }
 
 
@@ -101,8 +124,10 @@ class Plugin{
 
     public static function addCss($css) {
         $bt =  debug_backtrace();
-
-        $path = Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',dirname($bt[0]['file']).$css));
+        $pathInfo = explode('/',dirname($bt[0]['file']));
+        $count = count($pathInfo);
+        $name = $pathInfo[$count-1];
+        $path =  '.'.Plugin::FOLDER.'/'.$name.$css;
 
         $GLOBALS['hooks']['css_files'][] = $path;
     }
@@ -133,12 +158,19 @@ class Plugin{
 
     public static function path(){
         $bt =  debug_backtrace();
-        return Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',dirname($bt[0]['file']))).'/';
+        $pathInfo = explode('/',dirname($bt[0]['file']));
+        $count = count($pathInfo);
+        $name = $pathInfo[$count-1];
+        return '.'.Plugin::FOLDER.'/'.$name.'/';
     }
 
     public static function addJs($js) {
         $bt =  debug_backtrace();
-        $path = Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',dirname($bt[0]['file']).$js));
+        $pathInfo = explode('/',dirname($bt[0]['file']));
+        $count = count($pathInfo);
+        $name = $pathInfo[$count-1];
+        $path = '.'.Plugin::FOLDER.'/'.$name.$js;
+
         $GLOBALS['hooks']['js_files'][] = $path;
     }
 
@@ -164,7 +196,9 @@ class Plugin{
     public static function getFiles($onlyActivated=false){
 
         $enabled = $disabled =  array();
-        $files = glob(dirname(__FILE__). Plugin::FOLDER .'/*/*.plugin.*.php') or array();
+        $files = glob(dirname(__FILE__). Plugin::FOLDER .'/*/*.plugin*.php');
+        if(empty($files))
+            $files = array();
 
         foreach($files as $file){
             $plugin = Plugin::getObject($file);

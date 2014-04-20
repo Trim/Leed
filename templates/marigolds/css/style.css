@@ -455,6 +455,49 @@ header a,header a:hover,header a:visited{
 .settings article > section:not(:first-child){
     display:none;
 }
+.settings .feedsList {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.settings .feedListItem {
+    clear: right;
+}
+.settings .feedTitle {
+    display: inline-block;
+    width:45%;
+    word-wrap:break-word
+}
+.settings .feedFolder,
+.settings .feedVerbose,
+.settings .feedRename,
+.settings .feedDelete {
+    vertical-align: top;
+}
+
+#main.settings .feedAction {
+    width: 25%;
+    float: right;
+}
+
+#main.settings .feedFolder {
+    width: 72%;
+}
+
+#main.settings .feedVerbose {
+    min-width: 1em;
+    float:left;
+}
+
+.settings .feedButtons {
+    float: right;
+    width: 28%;
+}
+#main.settings .feedRename,
+#main.settings .feedDelete {
+    min-width: 7em;
+    width: 48%;
+}
 
 .pointer{
     cursor:pointer;
