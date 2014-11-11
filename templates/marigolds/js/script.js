@@ -12,19 +12,13 @@ keyCode['p'] = 80;
 keyCode['k'] = 75;
 keyCode['o'] = 79;
 keyCode['h'] = 72;
+keyCode['j'] = 74;
 keyCode['space'] = 32;
 
 $(document).ready(function(){
 
     // Page settings
     if($('.settings').length){
-
-        // Gestion affichage partiel ou complet en fonction de affichage du contenu
-        if($("input[name='articleDisplayContent']").length){
-            $("input[name='articleDisplayContent']").click(function(){
-                toggleArticleView();
-            });
-        }
 
         // Si nom du bloc en hash dans url
         var hash=window.location.hash;
@@ -56,6 +50,17 @@ $(document).ready(function(){
     // focus sur l'input du login
     if (document.getElementById('inputlogin')) document.getElementById('inputlogin').focus();
 });
+
+
+
+function maj(data){
+   server = data.maj["leed"];
+        if(server!=null && server.version!=null && server.version!=$(".versionBloc").html()){
+            $(".versionBloc").addClass('newVersion');
+            $('.versionBloc').attr('title','Version '+server.version+' disponible.');
+            if(server.link != null) $('.versionBloc').attr('onclick','window.location="'+server.link+'";');
+        }
+}
 
 function _t(key,args){
     value = i18n[key];
@@ -128,7 +133,12 @@ $(document).keydown(function (e) {
         break;
         case keyCode['h']:
             //ouvrir/fermer le panneau d'aide
-            document.getElementById( 'helpPanel' ).style.display == 'block' ? document.getElementById( 'helpPanel' ).style.display = 'none' : document.getElementById( 'helpPanel' ).style.display = 'block';
+            $('#helpPanel').fadeToggle(200);
+            return false;
+        break;
+        case keyCode['j']:
+            // Affiche / cache les blocs résumé / content
+            toggleArticleDisplayMode(document.getElementById('btnDisplayMode_'+$('.eventSelected').attr('id')),$('.eventSelected').attr('id'));
             return false;
         break;
     }
@@ -137,6 +147,68 @@ $(document).keydown(function (e) {
 $(window).scroll(function(){
     scrollInfini();
 });
+
+
+/** SECTION MARKET & PLUGINS **/
+
+function togglePluginMenu(element,page){
+    $(element).parent().find('li').removeClass('selected');
+    $(element).addClass('selected');
+    if(page=='market'){
+        $('.marketZone').fadeIn(300);
+        $('.installedZone').hide();
+        $('#btnSearchPlugin').trigger("click");
+
+    }else{
+        $('.marketZone').hide();
+        $('.installedZone').fadeIn(300);
+    }
+}
+
+function searchPlugin(keyword){
+    $('#resultsPlugin').html('Chargement en cours...');
+    var baseUrl = (location.protocol == 'https:'?"https://market.idleman.fr:666":"http://market.idleman.fr")
+    $.getJSON(baseUrl+"/api.php?s=leed&m=search&k="+keyword+"&callback=?");
+}
+
+function jsonp(data){
+    
+    switch(data.method){
+        case 'search':
+            $('#resultsPlugin').html('');
+            if(data.results!=null && data.results.length>0){
+                for(var key in data.results){
+                    var plugin = data.results[key];
+                    tpl = 
+                    '<li>\
+                        <ul>\
+                            <li><h4>Nom: </h4>'+plugin.name+'</li>\
+                            <li><h4>Auteur: </h4><a href="mailto:'+plugin.mail+'">'+plugin.author+'</a></li>\
+                            <li><h4>Licence: </h4><a href="http://google.fr/#q='+plugin.licence+'">'+plugin.licence+'</a></li>\
+                            <li><h4>Version: </h4><code>'+plugin.version+'</code></li>\
+                            <li><h4>Site web: </h4><a href="'+plugin.link+'">'+plugin.link+'</a></li>\
+                            <li>'+plugin.description+'</li>\
+                            <li><button class="btn" onclick="installPlugin(\''+plugin.dll+'\');">Installer</button></li>\
+                        </ul>\
+                    </li>';
+                    $('#resultsPlugin').append(tpl);
+                }
+            }else{
+                $('#resultsPlugin').append('<li>Aucun résultats pour cette recherche.</li>');
+            }   
+        break;
+        case 'get':
+        
+        break;
+    }
+}
+
+function installPlugin(url){
+    $('#resultsPlugin').load('action.php?action=installPlugin&zip='+encodeURIComponent(url));
+}
+
+/** FIN MARKET & PLUGINS **/
+
 
 function scrollInfini() {
     var deviceAgent = navigator.userAgent.toLowerCase();
@@ -147,7 +219,9 @@ function scrollInfini() {
         if ($(window).data('ajaxready') == false) return;
 
         if(($(window).scrollTop() + $(window).height()) + 50 >= $(document).height()
-           || agentID && ($(window).scrollTop() + $(window).height()) + 150 > $(document).height())
+           || agentID && ($(window).scrollTop() + $(window).height()) + 150 > $(document).height()
+           || $('article').position().top + $('article').height() < $('aside').height()
+           )
         {
             // lorsqu'on commence un traitement, on met ajaxready à false
             $(window).data('ajaxready', false);
@@ -220,7 +294,7 @@ function addEventsButtonLuNonLus(){
     var handler = function(event){
     var target = event.target;
     var id = this.id;
-    if($(target).hasClass('readUnreadButton')){
+    if($(target).hasClass('readUnreadButton') || $(target).hasClass('icon-eye')){
         buttonAction(target,id);
     }else{
         targetThisEvent(this);
@@ -233,11 +307,11 @@ function addEventsButtonLuNonLus(){
 }
 
 function targetPreviousEvent(){
-    targetThisEvent($('.eventSelected').prev(':visible'),true);
+    targetThisEvent($('.eventSelected').prevAll(':visible').first(),true);
 }
 function targetNextEvent(){
 
-    targetThisEvent($('.eventSelected').next(':visible'),true);
+    targetThisEvent($('.eventSelected').nextAll(':visible').first(),true);
 }
 
 function targetThisEvent(event,focusOn){
@@ -263,7 +337,8 @@ function readTargetEvent(){
     var id = $(target).attr('id');
     readThis(buttonElement,id,null,function(){
         // on fait un focus sur l'Event suivant
-        targetThisEvent($('.eventSelected').next(),true);
+        targetThisEvent($('.eventSelected').nextAll(':visible').first(),true);
+        $(window).scroll();
     });
 }
 
@@ -283,13 +358,7 @@ function readAllDisplayedEvents(){
 }
 
 function switchFavoriteTargetEvent(){
-    var id = $(target).attr('id');
-    if($('.favorite',target).html()=='Favoriser'){
-        addFavorite($('.favorite',target),id);
-    }else{
-        removeFavorite($('.favorite',target),id);
-    }
-    // on débloque les touches le plus tard possible afin de passer derrière l'appel ajax
+    $('.favorite',target).click();
 }
 
 /* Fonctions de séléctions fin */
@@ -300,7 +369,7 @@ function toggleFolder(element,folder){
     open = 0;
     if(feedBloc.css('display')=='none') open = 1;
     feedBloc.slideToggle(200);
-    $(element).html((!open?_t('UNFOLD'):_t('FOLD')));
+    $(element).html(!open?'<i class="icon-folder-empty"></i>':'<i class="icon-folder-open-empty"></i>');
     $.ajax({
                   url: "./action.php?action=changeFolderState",
                   data:{id:folder,isopen:open}
@@ -309,6 +378,8 @@ function toggleFolder(element,folder){
 
 function addFavorite(element,id){
     var activeScreen = $('#pageTop').html();
+    // Colorise l'élément pour indiquer la bonne réception de la demande
+    $(element).css('color', 'black');
     $.ajax({
         url: "./action.php?action=addFavorite",
         data:{id:id},
@@ -321,15 +392,18 @@ function addFavorite(element,id){
                 // on compte combien d'article ont été remis en favoris sur la pages favoris (scroll infini)
                 if (activeScreen=='favorites') {
                     $(window).data('nblus', $(window).data('nblus')-1);
-                    $('#nbarticle').html(parseInt($('#nbarticle').html()) + 1);
+                    addOrRemoveFeedNumber('+');
                 }
             }
+            $(element).css('color', ''); // Retour au style de classe
         }
     });
 }
 
 function removeFavorite(element,id){
     var activeScreen = $('#pageTop').html();
+    // Colorise l'élément pour indiquer la bonne réception de la demande
+    $(element).css('color', 'black');
     $.ajax({
         url: "./action.php?action=removeFavorite",
         data:{id:id},
@@ -342,9 +416,10 @@ function removeFavorite(element,id){
                 // on compte combien d'article ont été remis en favoris sur la pages favoris (scroll infini)
                 if (activeScreen=='favorites') {
                     $(window).data('nblus', $(window).data('nblus')+1);
-                    $('#nbarticle').html(parseInt($('#nbarticle').html()) - 1);
+                    addOrRemoveFeedNumber('-');
                 }
             }
+            $(element).css('color', ''); // Retour au style de classe
         }
     });
 }
@@ -395,7 +470,7 @@ function saveRenameFeed(element,feed,url){
     var feedNameValue = feedNameCase.val();
     var feedUrlCase = feedLine.children('.js-feedTitle:first').children('input[name="feedUrl"]');
     var feedUrlValue = feedUrlCase.val();
-    $(element).html('Renommer');
+    $(element).html(_t('RENAME'));
     $(element).attr('style','background-color:#F16529;');
     $(element).attr('onclick','renameFeed(this,'+feed+')');
     feedNameCase.replaceWith('<a href="'+url+'">'+feedNameValue+'</a>');
@@ -415,10 +490,12 @@ function changeFeedFolder(element,id){
 
 function readThis(element,id,from,callback){
     var activeScreen = $('#pageTop').html();
-    var parent = $(element).parent().parent();
-    var nextEvent = $('#'+id).next();
+    var parent = $(element).closest('section');
+    var nextEvent = $('#'+id).nextAll(':visible').first();
     //sur les éléments non lus
     if(!parent.hasClass('eventRead')){
+        parent.addClass('eventRead');
+        addOrRemoveFeedNumber('-');
         $.ajax({
             url: "./action.php?action=readContent",
             data:{id:id},
@@ -430,7 +507,6 @@ function readThis(element,id,from,callback){
                     switch (activeScreen){
                         case '':
                             // cas de la page d'accueil
-                            parent.addClass('eventRead');
                             parent.fadeOut(200,function(){
                                 if(callback){
                                     callback();
@@ -444,12 +520,9 @@ function readThis(element,id,from,callback){
                             });
                             // on compte combien d'article ont été lus afin de les soustraires de la requête pour le scroll infini
                             $(window).data('nblus', $(window).data('nblus')+1);
-                            // on diminue le nombre d'article en haut de page
-                            $('#nbarticle').html(parseInt($('#nbarticle').html()) - 1)
                         break;
                         case 'selectedFolder':
-                        case 'selectedFeedNonLu':
-                            parent.addClass('eventRead');
+                        case 'selectedFeed':
                             if(callback){
                                 callback();
                             }else{
@@ -460,7 +533,6 @@ function readThis(element,id,from,callback){
                         break;
                         default:
                             // autres cas : favoris, selectedFeed ...
-                            parent.addClass('eventRead');
                             if(callback){
                                 callback();
                             }else{
@@ -474,6 +546,7 @@ function readThis(element,id,from,callback){
     }else{  // sur les éléments lus
             // si ce n'est pas un clic sur le titre de l'event
         if(from!='title'){
+            addOrRemoveFeedNumber('+');
             $.ajax({
                     url: "./action.php?action=unreadContent",
                     data:{id:id},
@@ -484,7 +557,7 @@ function readThis(element,id,from,callback){
                             if( console && console.log && msg!="" ) console.log(msg);
                             parent.removeClass('eventRead');
                             // on compte combien d'article ont été remis à non lus
-                            if ((activeScreen=='') || (activeScreen=='selectedFolder')|| (activeScreen=='selectedFeedNonLu'))
+                            if ((activeScreen=='') || (activeScreen=='selectedFolder')|| (activeScreen=='selectedFeed'))
                                 $(window).data('nblus', $(window).data('nblus')-1);
                             if(callback){
                                 callback();
@@ -512,10 +585,10 @@ function unReadThis(element,id,from){
                         if( console && console.log && msg!="" ) console.log(msg);
                         parent.removeClass('eventRead');
                         // on compte combien d'article ont été remis à non lus
-                        if ((activeScreen=='') || (activeScreen=='selectedFolder')|| (activeScreen=='selectedFeedNonLu'))
+                        if ((activeScreen=='') || (activeScreen=='selectedFolder')|| (activeScreen=='selectedFeed'))
                             $(window).data('nblus', $(window).data('nblus')-1);
-                        // on augmente le nombre d'article en haut de page
-                        if (activeScreen=='') $('#nbarticle').html(parseInt($('#nbarticle').html()) + 1);
+
+                        addOrRemoveFeedNumber('+');
                     }
                 }
             });
@@ -535,10 +608,79 @@ function synchronize(code){
     }
 }
 
-// Active ou desactive inputs type affichage des events
-function toggleArticleView(){
-    var element = $("input[name=articleView]");
-    element.prop("disabled",!element.prop("disabled"));
+// Affiche / cache les blocs résumé / content
+function toggleArticleDisplayMode(button, target){
+    if ($('#'+target+' > .summary').length>0 && $('#'+target+' > .summary').attr('style')!='display: none;'){
+
+        // je suis en mode affichage réduit et je passe en affichage mode complet
+        action = 'content';
+        $('#'+target+' > .summary').hide();
+        // chargement de l'article complet (content)
+        if ($.trim($('#'+target+' > .content').text()).length==0){
+            $.ajax({
+                url: "./action.php?action=articleDisplayMode&articleDisplayMode="+action+'&event_id='+target,
+                success:function(msg){
+                    if(msg.status == 'noconnect') {
+                        alert(msg.texte)
+                    } else {
+                        if( console && console.log && msg!="" ) console.log(msg);
+                        $('#'+target+' > .content').html(msg);
+                        $('#'+target+' > .content').show()
+                        // btn pour passer en mode title
+                        button.innerHTML = '|||';
+                        button.title = _t('EVENT_DISPLAY_CONTENT');
+                        $('#'+target+' > .articleDetails').last().show();
+                    }
+                }
+            });
+        } else {
+            $('#'+target+' > .content').show()
+            // btn pour passer en mode title
+            button.innerHTML = '|||';
+            button.title = _t('EVENT_DISPLAY_CONTENT');
+            $('#'+target+' > .articleDetails').last().show();
+        }
+
+    }else{
+        if ($('#'+target+' > .content').length>0 && $('#'+target+' > .content').attr('style')!='display: none;'){
+            // je suis en mode affichage complet et je passe en affichage mode title
+            $('#'+target+' > .content').hide();
+            // btn pour passer en mode reduit
+            button.innerHTML = '|&nbsp;&nbsp;';
+            button.title = _t('EVENT_DISPLAY_TITLE');
+            if ($('#'+target+' > .articleDetails').length > 1) {
+                $('#'+target+' > .articleDetails').last().hide();
+            }
+
+        }  else {
+
+            // je suis en mode affichage titre et je passe en affichage mode réduit
+            action = 'summary';
+            // chargement de l'article réduit (description)
+            if ($.trim($('#'+target+' > .summary').text()).length==0){
+                $.ajax({
+                    url: "./action.php?action=articleDisplayMode&articleDisplayMode="+action+'&event_id='+target,
+                    success:function(msg){
+                        if(msg.status == 'noconnect') {
+                            alert(msg.texte)
+                        } else {
+                            if( console && console.log && msg!="" ) console.log(msg);
+                            $('#'+target+' > .summary').html(msg);
+                            $('#'+target+' > .summary').show();
+                            // btn pour passer en mode complet
+                            button.innerHTML = '||&nbsp;';
+                            button.title = _t('EVENT_DISPLAY_SUMMARY');
+                        }
+                    }
+                });
+            } else {
+                $('#'+target+' > .summary').show();
+                // btn pour passer en mode complet
+                button.innerHTML = '||&nbsp;';
+                button.title = _t('EVENT_DISPLAY_SUMMARY');
+            }
+        }
+    }
 }
 
 // Disparition block et affichage block clique
@@ -559,8 +701,12 @@ function toggleUnreadFeedFolder(button,action){
                 //Afficher ou cacher les feeds
                 if(action){
                     $('.hidefeed').hide();
+                    $(button).find('i').addClass('icon-resize-small').removeClass('icon-resize-full');
                 }else{
                     $('.hidefeed').show();
+                     $(button).find('i').addClass('icon-resize-full').removeClass('icon-resize-small');
+                    
+                  
                 }
                 //changement de l'évènement onclick pour faire l'inverse lors du prochain clic
                 $(button).attr('onclick','toggleUnreadFeedFolder(this,'+!action+');');
@@ -642,4 +788,64 @@ function toggleOptionFeedVerbose(button,action){
             }
         }
     });
+}
+
+// fonction d'ajout ou de retrait d'un article dans les compteurs
+// operator = '-' pour les soustraction '+' pour les ajouts
+function addOrRemoveFeedNumber(operator){
+    if (operator == '-') {
+        // on diminue le nombre d'article en haut de page
+        var nb = parseInt($('#nbarticle').html()) - 1;
+        if (nb > 0) {
+            $('#nbarticle').html(nb);
+        } else {
+            $('#nbarticle').html(0);
+        }
+        // on diminue le nombre sur le flux en question
+        var feed_id = ($('.eventSelected').eq(0).data('feed'));
+        var feed = $('#menuBar ul a[href$="feed=' + feed_id + '"]').next().find('span');
+        nb = parseInt($(feed).text()) - 1;
+        if (nb > 0) {
+            $(feed).text(nb);
+        } else {
+            $(feed).text(0);
+        }
+        // on diminue le nombre sur le dossier
+        var feed_folder = ($(feed).closest('ul').prev('h1').find('.unreadForFolder'));
+        if(isNaN(feed_folder.html())) {
+            var regex='[0-9]+';
+            var found = feed_folder.html().match(regex);
+            nb = parseInt(found[0])-1;
+            var regex2='[^0-9]+';
+            var lib = feed_folder.html().match(regex2);
+            if (nb > 0) {
+                feed_folder.html(nb +lib[0])
+            } else {
+                feed_folder.html('0' +lib[0])
+            }
+        }
+    } else {
+        // on augmente le nombre d'article en haut de page
+        var nb = parseInt($('#nbarticle').html()) + 1;
+        $('#nbarticle').html(nb);
+        // on augmente le nombre sur le flux en question
+        var feed_id = ($('.eventSelected').eq(0).data('feed'));
+        var feed = $('#menuBar ul a[href$="feed=' + feed_id + '"]').next().find('span');
+        nb = parseInt($(feed).text()) + 1;
+        $(feed).text(nb);
+        // on augmente le nombre sur le dossier
+        var feed_folder = ($(feed).closest('ul').prev('h1').find('.unreadForFolder'));
+        if(isNaN(feed_folder.html())) {
+            var regex='[0-9]+';
+            var found = feed_folder.html().match(regex);
+            nb = parseInt(found[0])+1;
+            var regex2='[^0-9]+';
+            var lib = feed_folder.html().match(regex2);
+            if (nb > 0) {
+                feed_folder.html(nb +lib[0])
+            } else {
+                feed_folder.html('0' +lib[0])
+            }
+        }
+    }
 }

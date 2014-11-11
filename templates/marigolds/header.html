@@ -4,13 +4,13 @@
 <!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
 <!--[if gt IE 8]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
-    <title>Leed</title>
+    <title>{$delimiter=' · '}{if="isset($currentFeed)"}{$currentFeed->getName()}{$delimiter}{/if}{if="isset($currentFolder)"}{$currentFolder->getName()}{$delimiter}{/if}Leed</title>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=100,chrome=1">
     <meta name="description" content="Agrégateur de flux RSS Leed">
     <meta name="author" content="IdleMan">
-    <link rel="shortcut icon" type="image/png" href="favicon.png">
     <meta name="viewport" content="width=device-width">
+    <link rel="icon" type="image/png" href="favicon.png" />
     <link rel="stylesheet" href="css/style.css">
     {function="Plugin::callLink()"}
     {function="Plugin::callCss()"}
@@ -22,10 +22,15 @@
         <a id="pageTop" class="hidden">{$action}</a>
         <div id="header-container">
             <header class="wrapper clearfix">
-                <h1 class="logo" id="title"><a href="./index.php">L<i>eed</i></a></h1>
+                <h1 class="logo" id="title"><a href="./index.php">L<i>eed</i></a><div class="versionBloc">{#VERSION_NUMBER#}</div></h1>
                 <div class="loginBloc">
                     {if="!$myUser"}
-                    <form action="action.php?action=login" method="POST">
+                    {if="$wrongLogin"}
+                        {$wrongLoginClass=' wrongLogin'}
+                    {else}
+                        {$wrongLoginClass=''}
+                    {/if}
+                    <form action="action.php?action=login" method="POST" class="{$wrongLoginClass}">
                         <input id="inputlogin" type="text" class="miniInput left" name="login" placeholder="{function="_t('LOGIN')"}"/>
                         <input type="password" class="miniInput left" name="password" placeholder="{function="_t('PASSWORD')"}"/>
                         <button class="left">GO!!</button>
@@ -43,10 +48,10 @@
 
                 <nav>
                     <ul>
-                        <li><a href="index.php">{function="_t('HOME')"}</a></li>
-                        <li><a href="index.php?action=favorites">{function="_t('FAVORITES')"}</a></li>
-                        <li><a href="settings.php">{function="_t('MANAGE')"}</a></li>
-                        <li><a class="synchronyzeButton" title="{function="_t('LAUNCH_SYNCHRONISATION')"}" onclick="synchronize('{if="$myUser"}{$synchronisationCode}{/if}');">↺</a></li>
+                        <li><a href="index.php" title="{function="_t('HOME')"}"><i class="icon-home"></i></a></li>
+                        <li><a href="index.php?action=favorites" title="{function="_t('FAVORITES')"}"><i class="icon-star-empty"></i></a></li>
+                        <li><a href="settings.php" title="{function="_t('MANAGE')"}"><i class="icon-cog"></i></a></li>
+                        <li><a class="synchronyzeButton" title="{function="_t('LAUNCH_SYNCHRONISATION')"}" onclick="synchronize('{if="$myUser"}{$synchronisationCode}{/if}');"><i class="icon-arrows-cw"></i></a></li>
                         {function="Plugin::callHook("navigate_post_link", array(&$myUser))"}
                     </ul>
                 </nav>

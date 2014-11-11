@@ -26,6 +26,7 @@ switch ($action){
     case 'synchronize':
         require_once("SimplePie.class.php");
         $syncCode = $configurationManager->get('synchronisationCode');
+        $syncGradCount = $configurationManager->get('syncGradCount');
         if (   false==$myUser
             && !$commandLine
             && !(isset($_['code'])
@@ -40,7 +41,7 @@ switch ($action){
         if (!$commandLine)
             echo '<html>
                 <head>
-                <link rel="stylesheet" href="./templates/'.DEFAULT_THEME.'/css/style.css">
+                <link rel="stylesheet" href="./templates/'.$theme.'/css/style.css">
                 </head>
                 <body>
                 <div class="sync">';
@@ -48,7 +49,7 @@ switch ($action){
         $maxEvents = $configurationManager->get('feedMaxEvents');
         if('graduate'==$synchronisationType){
             // sélectionne les 10 plus vieux flux
-            $feeds = $feedManager->loadAll(null,'lastupdate',defined('SYNC_GRAD_COUNT') ? SYNC_GRAD_COUNT : 10);
+            $feeds = $feedManager->loadAll(null,'lastupdate', $syncGradCount);
             $syncTypeStr = _t('SYNCHRONISATION_TYPE').' : '._t('GRADUATE_SYNCHRONISATION');
         }else{
             // sélectionne tous les flux, triés par le nom
@@ -130,11 +131,11 @@ switch ($action){
             echo "<div id='syncSummary'\n";
             echo "<p>"._t('SYNCHRONISATION_COMPLETE')."</p>\n";
             echo "<ul>\n";
-            echo "<li>{$nbErrors} "._t('ERRORS')."\n";
-            echo "<li>{$nbOk} "._t('GOOD')."\n";
-            echo "<li>{$nbTotal} "._t('AT_TOTAL')."\n";
+            echo "<li>{$nbErrors}\t"._t('ERRORS')."\n";
+            echo "<li>{$nbOk}\t"._t('GOOD')."\n";
+            echo "<li>{$nbTotal}\t"._t('AT_TOTAL')."\n";
             echo "<li>{$totalTimeStr}\t"._t('SECONDS')."\n";
-            echo "<li>{$nbTotalEvents} nouveaux articles\n";
+            echo "<li>{$nbTotalEvents}\t"._t('NEW_ARTICLES')."\n";
             echo "</ul>\n";
             echo "</div>\n";
         }
@@ -173,22 +174,20 @@ switch ($action){
 
             //Ajout des préférences et réglages
             $configurationManager->put('root',(substr($_['root'], strlen($_['root'])-1)=='/'?$_['root']:$_['root'].'/'));
-            //$configurationManager->put('view',$_['view']);
-            if(isset($_['articleView']))
-                $configurationManager->put('articleView',$_['articleView']);
-            $configurationManager->put('articleDisplayContent',$_['articleDisplayContent']);
             $configurationManager->put('articleDisplayAnonymous',$_['articleDisplayAnonymous']);
-
             $configurationManager->put('articlePerPages',$_['articlePerPages']);
             $configurationManager->put('articleDisplayLink',$_['articleDisplayLink']);
             $configurationManager->put('articleDisplayDate',$_['articleDisplayDate']);
             $configurationManager->put('articleDisplayAuthor',$_['articleDisplayAuthor']);
             $configurationManager->put('articleDisplayHomeSort',$_['articleDisplayHomeSort']);
             $configurationManager->put('articleDisplayFolderSort',$_['articleDisplayFolderSort']);
+            $configurationManager->put('articleDisplayMode',$_['articleDisplayMode']);
             $configurationManager->put('synchronisationType',$_['synchronisationType']);
             $configurationManager->put('synchronisationEnableCache',$_['synchronisationEnableCache']);
             $configurationManager->put('synchronisationForceFeed',$_['synchronisationForceFeed']);
             $configurationManager->put('feedMaxEvents',$_['feedMaxEvents']);
+            $configurationManager->put('language',$_['ChgLanguage']);
+            $configurationManager->put('theme',$_['ChgTheme']);
 
             $userManager->change(array('login'=>$_['login']),array('id'=>$myUser->getId()));
             if(trim($_['password'])!='') {
@@ -255,7 +254,7 @@ switch ($action){
 
     case 'importForm':
         if($myUser==false) exit(_t('YOU_MUST_BE_CONNECTED_ACTION'));
-        echo '<html style="height:auto;"><link rel="stylesheet" href="templates/marigolds/css/style.css">
+        echo '<html style="height:auto;"><link rel="stylesheet" href="templates/'.$theme.'/css/style.css">
                 <body style="height:auto;">
                     <form action="action.php?action=importFeed" method="POST" enctype="multipart/form-data">
                     <p>'._t('OPML_FILE').' : <input name="newImport" type="file"/> <button name="importButton">'._t('IMPORT').'</button></p>
@@ -269,7 +268,7 @@ switch ($action){
 
     case 'synchronizeForm':
      if(isset($myUser) && $myUser!=false){
-        echo '<link rel="stylesheet" href="templates/marigolds/css/style.css">
+        echo '<link rel="stylesheet" href="templates/'.$theme.'/css/style.css">
                 <a class="button" href="action.php?action=synchronize">'._t('SYNCHRONIZE_NOW').'</a>
                     <p>'._t('SYNCHRONIZE_COFFEE_TIME').'</p>
 
@@ -364,6 +363,7 @@ switch ($action){
             $enableCache = ($configurationManager->get('synchronisationEnableCache')=='')?0:$configurationManager->get('synchronisationEnableCache');
             $forceFeed = ($configurationManager->get('synchronisationForceFeed')=='')?0:$configurationManager->get('synchronisationForceFeed');
             $newFeed->parse(time(), $_, $enableCache, $forceFeed);
+            Plugin::callHook("action_after_addFeed", array(&$newFeed));
         }
         header('location: ./settings.php#manageBloc');
     break;
@@ -381,6 +381,7 @@ switch ($action){
         if(isset($_GET['id'])){
             $feedManager->delete(array('id'=>$_['id']));
             $eventManager->delete(array('feed'=>$_['id']));
+            Plugin::callHook("action_after_removeFeed", array($_['id']));
         }
         header('location: ./settings.php');
     break;
@@ -417,7 +418,7 @@ switch ($action){
     case 'removeFolder':
         if($myUser==false) exit(_t('YOU_MUST_BE_CONNECTED_ACTION'));
         if(isset($_['id']) && is_numeric($_['id']) && $_['id']>0){
-            $eventManager->customExecute('DELETE FROM '.MYSQL_PREFIX.'event WHERE '.MYSQL_PREFIX.'event.feed in (SELECT '.MYSQL_PREFIX.'feed.id FROM '.MYSQL_PREFIX.'feed WHERE '.MYSQL_PREFIX.'feed.folder =\''.intval($_['id']).'\') ;');
+            $eventManager->customExecute('DELETE FROM `'.MYSQL_PREFIX.'event` WHERE `'.MYSQL_PREFIX.'event`.`feed` in (SELECT `'.MYSQL_PREFIX.'feed`.`id` FROM `'.MYSQL_PREFIX.'feed` WHERE `'.MYSQL_PREFIX.'feed`.`folder` =\''.intval($_['id']).'\') ;');
             $feedManager->delete(array('folder'=>$_['id']));
             $folderManager->delete(array('id'=>$_['id']));
         }
@@ -508,22 +509,24 @@ switch ($action){
         if(isset($_['usr'])){
             $user = User::existAuthToken($_['usr']);
             if($user==false){
-                exit("erreur identification : le compte est inexistant");
+                exit("error"); //@TODO: traduire
             }else{
                 $_SESSION['currentUser'] = serialize($user);
                 header('location: ./action.php?action=addFeed&newUrl='.$_['newUrl']);
+                exit();
             }
         }else{
             $salt = $configurationManager->get('cryptographicSalt');
             if (empty($salt)) $salt = '';
             $user = $userManager->exist($_['login'],$_['password'],$salt);
             if($user==false){
-                exit("erreur identification : le compte est inexistant");
+                header('location: ./index.php?action=wrongLogin');
             }else{
                 $_SESSION['currentUser'] = serialize($user);
                 if (isset($_['rememberMe'])) $user->setStayConnected();
+                header('location: ./index.php');
             }
-            header('location: ./index.php');
+            exit();
         }
 
 
@@ -593,10 +596,74 @@ switch ($action){
 
         break;
 
+    case 'articleDisplayMode':
+        if($myUser==false) {
+            $response_array['status'] = 'noconnect';
+            $response_array['texte'] = _t('YOU_MUST_BE_CONNECTED_ACTION');
+            header('Content-type: application/json');
+            echo json_encode($response_array);
+            exit();
+        }
+        // chargement du content de l'article souhaité
+        $newEvent = new Event();
+        $event = $newEvent->getById($_['event_id']);
+
+        if ($_['articleDisplayMode']=='content'){
+            //error_log(print_r($_SESSION['events'],true));
+            $content = $event->getContent();
+        } else {
+            $content = $event->getDescription();
+        }
+        echo $content;
+
+        break;
+
     default:
         require_once("SimplePie.class.php");
         Plugin::callHook("action_post_case", array(&$_,$myUser));
         //exit('0');
+    break;
+
+    //Installation d'un nouveau plugin
+    case 'installPlugin':
+    $tempZipName = 'plugins/'.md5(microtime());
+    echo '<br/>Téléchargement du plugin...';
+    file_put_contents($tempZipName,file_get_contents(urldecode($_['zip'])));
+    if(file_exists($tempZipName)){
+        echo '<br/>Plugin téléchargé <span class="label label-success">OK</span>';
+        echo '<br/>Extraction du plugin...';
+        $zip = new ZipArchive;
+        $res = $zip->open($tempZipName);
+        if ($res === TRUE) {
+            $tempZipFolder = $tempZipName.'_';
+            $zip->extractTo($tempZipFolder);
+            $zip->close();
+            echo '<br/>Plugin extrait <span class="readUnreadButton">OK</span>';
+            $pluginName = glob($tempZipFolder.'/*.plugin*.php');
+            if(count($pluginName)>0){
+            $pluginName = str_replace(array($tempZipFolder.'/','.enabled','.disabled','.plugin','.php'),'',$pluginName[0]);
+                if(!file_exists('plugins/'.$pluginName)){
+                    echo '<br/>Renommage...';
+                    if(rename($tempZipFolder,'plugins/'.$pluginName)){
+                        echo '<br/>Plugin installé, rechargez la page pour voir le plugin <span class="readUnreadButton">pensez à l\'activer</span>';
+                    }else{
+                        Functions::rmFullDir($tempZipFolder);
+                        echo '<br/>Impossible de renommer le plugin <span class="readUnreadButton">Erreur</span>';
+                    }
+                }else{
+                    echo '<br/>Plugin déjà installé <span class="readUnreadButton">OK</span>';
+                }
+            }else{
+                echo '<br/>Plugin invalide, fichier principal manquant <span class="readUnreadButton">Erreur</span>';
+            }
+
+        } else {
+          echo '<br/>Echec de l\'extraction <span class="readUnreadButton">Erreur</span>';
+        }
+         unlink($tempZipName);
+        }else{
+            echo '<br/>Echec du téléchargement <span class="readUnreadButton">Erreur</span>';
+        }
     break;
 }
 

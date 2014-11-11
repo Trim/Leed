@@ -11,10 +11,19 @@ require_once('i18n.php');
 global $i18n;
 $install_terminee=false;
 
-if (isset($_GET['lang']))
-    $currentLanguage = i18n_init($_GET['lang']);
+/* Prend le choix de langue de l'utilisateur, soit :
+ * - lorsqu'il vient de changer la langue du sélecteur ($lang)
+ * - lorsqu'il vient de lancer l'installeur ($install_changeLngLeed)
+ */
+$lang = '';
+if (isset($_GET['lang'])) $lang = $_GET['lang'];
+elseif (isset($_POST['install_changeLngLeed'])) $lang = $_POST['install_changeLngLeed'];
+
+$installDirectory = dirname(__FILE__).'/install';
+if (empty($lang))
+    $currentLanguage = i18n_init(Functions::getBrowserLanguages(),$installDirectory);
 else
-    $currentLanguage = i18n_init(Functions::getBrowserLanguages());
+    $currentLanguage = i18n_init($lang,$installDirectory);
 
 $languageList = $i18n->languages;
 
@@ -60,7 +69,7 @@ if (empty($root)) {
 }
 if (!isset($_['mysqlPrefix'])) {
     // Le formulaire n'étant pas soumis, on met cette valeur par défaut.
-    $mysqlPrefix = 'leed_';
+    $mysqlPrefix = 'leed__'; // séparation en groupe de tables PhpMyAdmin
 }
 
 $lib_errors = _t('ERROR');
@@ -98,6 +107,11 @@ if (!@function_exists('file_put_contents')){
 }else{
     $test[$lib_success][] = _t('INSTALL_INFO_FILEPUT');
 }
+if (!@function_exists('curl_exec')){
+    $test[$lib_errors][] = _t('INSTALL_ERROR_CURL');
+}else{
+    $test[$lib_success][] = _t('INSTALL_INFO_CURL');
+}
 if (@version_compare(PHP_VERSION, '5.1.0') <= 0){
     $test[$lib_errors][] = _t('INSTALL_ERROR_PHPV', array(PHP_VERSION));
 }else{
@@ -112,7 +126,7 @@ if(ini_get('safe_mode') && ini_get('max_execution_time')!=0){
 if (isset($_['installButton']) && empty($test[$lib_errors])) { // Pas d'erreur, l'installation peut se faire.
     $constant = "<?php
     define('VERSION_NUMBER','1.6');
-    define('VERSION_NAME','Stable');
+    define('VERSION_NAME','Dev');
 
     //Host de Mysql, le plus souvent localhost ou 127.0.0.1
     define('MYSQL_HOST','{$mysqlHost}');
@@ -124,14 +138,6 @@ if (isset($_['installButton']) && empty($test[$lib_errors])) { // Pas d'erreur, 
     define('MYSQL_BDD','{$mysqlBase}');
     //Prefix des noms des tables leed pour les bases de données uniques
     define('MYSQL_PREFIX','{$mysqlPrefix}');
-    //Theme graphique
-    define('DEFAULT_THEME','marigolds');
-    //Nombre de pages affichées dans la barre de pagination
-    define('PAGINATION_SCALE',5);
-    //Nombre de flux mis à jour lors de la synchronisation graduée
-    define('SYNC_GRAD_COUNT',10);
-    //Langue utilisée
-    define('LANGUAGE','".$_POST['install_changeLngLeed']."');
 ?>";
 
     file_put_contents('constant.php', $constant);
@@ -188,24 +194,27 @@ if (isset($_['installButton']) && empty($test[$lib_errors])) { // Pas d'erreur, 
         $configurationManager->truncate();
     }
     $configurationManager->create();
-    $configurationManager->add('root',$root);
-    $configurationManager->add('articleView','partial');
-    $configurationManager->add('articleDisplayContent','1');
     $configurationManager->add('articleDisplayAnonymous','0');
-    $configurationManager->add('articlePerPages','5');
-    $configurationManager->add('articleDisplayLink','1');
-    $configurationManager->add('articleDisplayDate','1');
     $configurationManager->add('articleDisplayAuthor','1');
-    $configurationManager->add('articleDisplayHomeSort','1');
+    $configurationManager->add('articleDisplayDate','1');
     $configurationManager->add('articleDisplayFolderSort','1');
-    $configurationManager->add('displayOnlyUnreadFeedFolder','false');
-    $configurationManager->add('optionFeedIsVerbose',1);
-    $configurationManager->add('synchronisationType','auto');
-    $configurationManager->add('feedMaxEvents','50');
-    $configurationManager->add('synchronisationCode',$synchronisationCode);
-    $configurationManager->add('synchronisationEnableCache','1');
-    $configurationManager->add('synchronisationForceFeed','0');
+    $configurationManager->add('articleDisplayHomeSort','1');
+    $configurationManager->add('articleDisplayLink','1');
+    $configurationManager->add('articleDisplayMode','summary');
+    $configurationManager->add('articlePerPages','5');
     $configurationManager->add('cryptographicSalt', $cryptographicSalt);
+    $configurationManager->add('displayOnlyUnreadFeedFolder','false');
+    $configurationManager->add('feedMaxEvents','50');
+    $configurationManager->add('language', $_POST['install_changeLngLeed']);
+    $configurationManager->add('optionFeedIsVerbose',1);
+    $configurationManager->add('paginationScale',5);
+    $configurationManager->add('syncGradCount','10');
+    $configurationManager->add('synchronisationCode',$synchronisationCode);
+    $configurationManager->add('synchronisationEnableCache','0');
+    $configurationManager->add('synchronisationForceFeed','0');
+    $configurationManager->add('synchronisationType','auto');
+    $configurationManager->add('theme','marigolds');
+    $configurationManager->add('root',$root);
 
     $install_terminee=true;
 } /* Ci-dessous, on y va si :

@@ -9,27 +9,27 @@
 class Plugin{
 
     const FOLDER = '/plugins';
-    protected $name,$author,$mail,$link,$licence,$path,$description,$version,$state,$type;
+    protected $name,$author,$address,$link,$licence,$path,$description,$version,$state,$type;
 
     function __construct(){
     }
 
     public static function includeAll(){
-        global $i18n, $i18n_js;
+        global $i18n, $i18n_js, $language, $theme;
         $pluginFiles = Plugin::getFiles(true);
         if(is_array($pluginFiles)) {
             foreach($pluginFiles as $pluginFile) {
                 // Chargement du fichier de Langue du plugin
-                $i18n->append(new Translation(dirname($pluginFile)));
+                $i18n->append(new Translation(dirname($pluginFile),$language));
                 // Inclusion du coeur de plugin
                 include $pluginFile;
                 // Gestion des css du plugin en fonction du thème actif
-                $cssTheme = glob(dirname($pluginFile).'/*/'.DEFAULT_THEME.'.css');
+                $cssTheme = glob(dirname($pluginFile).'/*/'.$theme.'.css');
                 $cssDefault = glob(dirname($pluginFile).'/*/default.css');
                 if(isset($cssTheme[0])){
                     $GLOBALS['hooks']['css_files'][] = Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',$cssTheme[0]));
                 }else if(isset($cssDefault[0])){
-                    $GLOBALS['hooks']['css_files'][] =  Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',$cssDefault[0]));
+                    $GLOBALS['hooks']['css_files'][] = Functions::relativePath(str_replace('\\','/',dirname(__FILE__)),str_replace('\\','/',$cssDefault[0]));
                 }
             }
         }
@@ -69,11 +69,17 @@ class Plugin{
         $plugin = new Plugin();
         $fileLines = file_get_contents($pluginFile);
 
-        if(preg_match("#@author\s(.+)\s\<#", $fileLines, $match))
-            $plugin->setAuthor(trim($match[1]));
+        if(preg_match_all("#@author\s(.+)\s\<(.*)\>#", $fileLines, $matches)) {
+            foreach($matches[1] as $match) {
+                $authors[] = trim($match);
+            }
+            $plugin->setAuthor($authors);
 
-        if(preg_match("#@author\s(.+)\s\<([a-z\@\.A-Z\s\-]+)\>#", $fileLines, $match))
-            $plugin->setMail(strtolower($match[2]));
+            foreach($matches[2] as $match) {
+                $address[] = strtolower($match);
+            }
+            $plugin->setAddress($address);
+        }
 
         if(preg_match("#@name\s(.+)[\r\n]#", $fileLines, $match))
             $plugin->setName($match[1]);
@@ -142,15 +148,15 @@ class Plugin{
         return $return;
     }
 
-    public static function addLink($rel, $link) {
-        $GLOBALS['hooks']['head_link'][] = array("rel"=>$rel, "link"=>$link);
+    public static function addLink($rel, $link, $type='', $title='') {
+        $GLOBALS['hooks']['head_link'][] = array("rel"=>$rel, "link"=>$link, "type"=>$type, "title"=>$title);
     }
 
     public static function callLink(){
         $return='';
         if(isset($GLOBALS['hooks']['head_link'])) {
             foreach($GLOBALS['hooks']['head_link'] as $head_link) {
-                $return .='<link rel="'.$head_link['rel'].'" href="'.$head_link['link'].'" />'."\n";
+                $return .='<link rel="'.$head_link['rel'].'" href="'.$head_link['link'].'" type="'.$head_link['type'].'" title="'.$head_link['title'].'" />'."\n";
             }
         }
         return $return;
@@ -258,9 +264,13 @@ class Plugin{
 
 
     static function sortPlugin($a, $b){
-        if ($a->getName() == $b->getName())
-        return 0;
-        return ($a->getName() < $b->getName()) ? -1 : 1;
+        if ($a->getState() == $b->getState())
+            if ($a->getName() == $b->getName())
+                return 0;
+            else
+                return $a->getName() < $b->getName() ? -1 : 1;
+        else
+            return $a->getState() < $b->getState() ? -1 : 1;
     }
 
 
@@ -281,12 +291,12 @@ class Plugin{
         return $this->author;
     }
 
-    function getMail(){
-        return $this->mail;
+    function getAddress(){
+        return $this->address;
     }
 
-    function setMail($mail){
-        $this->mail = $mail;
+    function setAddress($address){
+        $this->address = $address;
     }
 
     function getLicence(){

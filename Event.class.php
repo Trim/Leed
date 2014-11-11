@@ -17,7 +17,7 @@ class Event extends MysqlEntity{
         'guid'=>'longstring',
         'title'=>'string',
         'creator'=>'string',
-        'content'=>'longstring',
+        'content'=>'extralongstring',
         'description'=>'longstring',
         'link'=>'longstring',
         'unread'=>'integer',
@@ -51,7 +51,7 @@ class Event extends MysqlEntity{
 
     function getEventCountPerFolder(){
         $events = array();
-        $results = $this->customQuery('SELECT COUNT('.MYSQL_PREFIX.$this->TABLE_NAME.'.id),'.MYSQL_PREFIX.'feed.folder FROM '.MYSQL_PREFIX.$this->TABLE_NAME.' INNER JOIN '.MYSQL_PREFIX.'feed ON ('.MYSQL_PREFIX.'event.feed = '.MYSQL_PREFIX.'feed.id) WHERE '.MYSQL_PREFIX.$this->TABLE_NAME.'.unread=1 GROUP BY '.MYSQL_PREFIX.'feed.folder');
+        $results = $this->customQuery('SELECT COUNT(`'.MYSQL_PREFIX.$this->TABLE_NAME.'`.`id`),`'.MYSQL_PREFIX.'feed`.`folder` FROM `'.MYSQL_PREFIX.$this->TABLE_NAME.'` INNER JOIN `'.MYSQL_PREFIX.'feed` ON (`'.MYSQL_PREFIX.'event`.`feed` = `'.MYSQL_PREFIX.'feed`.`id`) WHERE `'.MYSQL_PREFIX.$this->TABLE_NAME.'`.`unread`=1 GROUP BY `'.MYSQL_PREFIX.'feed`.`folder`');
         while($item = mysql_fetch_array($results)){
             $events[$item[1]] = $item[0];
         }
@@ -60,7 +60,7 @@ class Event extends MysqlEntity{
     }
 
     function getEventCountNotVerboseFeed(){
-        $results = $this->customQuery('SELECT COUNT(1) FROM '.MYSQL_PREFIX.$this->TABLE_NAME.' INNER JOIN '.MYSQL_PREFIX.'feed ON ('.MYSQL_PREFIX.'event.feed = '.MYSQL_PREFIX.'feed.id) WHERE '.MYSQL_PREFIX.$this->TABLE_NAME.'.unread=1 AND '.MYSQL_PREFIX.'feed.isverbose=0');
+        $results = $this->customQuery('SELECT COUNT(1) FROM `'.MYSQL_PREFIX.$this->TABLE_NAME.'` INNER JOIN `'.MYSQL_PREFIX.'feed` ON (`'.MYSQL_PREFIX.'event`.`feed` = `'.MYSQL_PREFIX.'feed`.`id`) WHERE `'.MYSQL_PREFIX.$this->TABLE_NAME.'`.`unread`=1 AND `'.MYSQL_PREFIX.'feed`.`isverbose`=0');
         while($item = mysql_fetch_array($results)){
             $nbitem =  $item[0];
         }
@@ -71,7 +71,7 @@ class Event extends MysqlEntity{
     function getEventsNotVerboseFeed($start=0,$limit=10000,$order,$columns='*'){
         $eventManager = new Event();
         $objects = array();
-        $results = $this->customQuery('SELECT '.$columns.' FROM '.MYSQL_PREFIX.'event INNER JOIN '.MYSQL_PREFIX.'feed ON ('.MYSQL_PREFIX.'event.feed = '.MYSQL_PREFIX.'feed.id) WHERE '.MYSQL_PREFIX.'event.unread=1 AND '.MYSQL_PREFIX.'feed.isverbose = 0 ORDER BY '.$order.' LIMIT '.$start.','.$limit);
+        $results = $this->customQuery('SELECT '.$columns.' FROM `'.MYSQL_PREFIX.'event` INNER JOIN `'.MYSQL_PREFIX.'feed` ON (`'.MYSQL_PREFIX.'event`.`feed` = `'.MYSQL_PREFIX.'feed`.`id`) WHERE `'.MYSQL_PREFIX.'event`.`unread`=1 AND `'.MYSQL_PREFIX.'feed`.`isverbose` = 0 ORDER BY '.$order.' LIMIT '.$start.','.$limit);
         if($results!=false){
             while($item = mysql_fetch_array($results)){
                 $object = new Event();
@@ -123,14 +123,20 @@ class Event extends MysqlEntity{
     }
 
     function getPubdateWithInstant($instant){
+        if (empty($this->pubdate)) return '';
         $alpha = $instant - $this->pubdate;
         if ($alpha < 86400 ){
             $hour = floor($alpha/3600);
             $alpha = ($hour!=0?$alpha-($hour*3600):$alpha);
             $minuts = floor($alpha/60);
-            return 'il y a '.($hour!=0?$hour.'h et':'').' '.$minuts.'min';
+            if ($hour!=0) {
+                return _t('PUBDATE_WITHINSTANT_LOWERH24',array($hour,$minuts));
+            } else {
+                return _t('PUBDATE_WITHINSTANT_LOWERH1',array($minuts));
+            }
         }else{
-            return 'le '.$this->getPubdate('d/m/Y à H:i:s');
+            $date=$this->getPubdate(_t('FORMAT_DATE_HOURS'));
+            return _t('PUBDATE_WITHINSTANT',array($date));
         }
     }
 

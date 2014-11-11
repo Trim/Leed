@@ -25,39 +25,39 @@ $tpl->assign('allFeeds',$allFeeds);
 $tpl->assign('allFeedsPerFolder',$allFeeds['folderMap']);
 //recuperation de tous les event nons lu par dossiers
 $tpl->assign('allEvents',$eventManager->getEventCountPerFolder());
+//utilisé pour récupérer le statut d'un feed dans le template (en erreur ou ok)
+$feedState = new Feed();
+$tpl->assign('feedState',$feedState);
 
-
-$articleDisplayContent = $configurationManager->get('articleDisplayContent');
-$articleView = $configurationManager->get('articleView');
-$articlePerPages = $configurationManager->get('articlePerPages');
-$articleDisplayLink = $configurationManager->get('articleDisplayLink');
-$articleDisplayDate = $configurationManager->get('articleDisplayDate');
 $articleDisplayAuthor = $configurationManager->get('articleDisplayAuthor');
-$articleDisplayHomeSort = $configurationManager->get('articleDisplayHomeSort');
+$articleDisplayDate = $configurationManager->get('articleDisplayDate');
 $articleDisplayFolderSort = $configurationManager->get('articleDisplayFolderSort');
+$articleDisplayHomeSort = $configurationManager->get('articleDisplayHomeSort');
+$articleDisplayLink = $configurationManager->get('articleDisplayLink');
+$articleDisplayMode = $configurationManager->get('articleDisplayMode');
+$articlePerPages = $configurationManager->get('articlePerPages');
 $displayOnlyUnreadFeedFolder = $configurationManager->get('displayOnlyUnreadFeedFolder');
 if (!isset($displayOnlyUnreadFeedFolder)) $displayOnlyUnreadFeedFolder=false;
 ($displayOnlyUnreadFeedFolder=='true')?$displayOnlyUnreadFeedFolder_reverse='false':$displayOnlyUnreadFeedFolder_reverse='true';
 $optionFeedIsVerbose = $configurationManager->get('optionFeedIsVerbose');
 
-$tpl->assign('articleDisplayContent',$configurationManager->get('articleDisplayContent'));
-$tpl->assign('articleView',$configurationManager->get('articleView'));
-$tpl->assign('articlePerPages',$configurationManager->get('articlePerPages'));
-$tpl->assign('articleDisplayLink',$configurationManager->get('articleDisplayLink'));
-$tpl->assign('articleDisplayDate',$configurationManager->get('articleDisplayDate'));
-$tpl->assign('articleDisplayAuthor',$configurationManager->get('articleDisplayAuthor'));
-$tpl->assign('articleDisplayHomeSort',$configurationManager->get('articleDisplayHomeSort'));
-$tpl->assign('articleDisplayFolderSort',$configurationManager->get('articleDisplayFolderSort'));
+$tpl->assign('articleDisplayAuthor',$articleDisplayAuthor);
+$tpl->assign('articleDisplayDate',$articleDisplayDate);
+$tpl->assign('articleDisplayFolderSort',$articleDisplayFolderSort);
+$tpl->assign('articleDisplayHomeSort',$articleDisplayHomeSort);
+$tpl->assign('articleDisplayLink',$articleDisplayLink);
+$tpl->assign('articleDisplayMode',$articleDisplayMode);
+$tpl->assign('articlePerPages',$articlePerPages);
 $tpl->assign('displayOnlyUnreadFeedFolder',$displayOnlyUnreadFeedFolder);
 $tpl->assign('displayOnlyUnreadFeedFolder_reverse',$displayOnlyUnreadFeedFolder_reverse);
 
-$target = MYSQL_PREFIX.'event.title,'.MYSQL_PREFIX.'event.unread,'.MYSQL_PREFIX.'event.favorite,'.MYSQL_PREFIX.'event.feed,';
-if($articleDisplayContent && $articleView=='partial') $target .= MYSQL_PREFIX.'event.description,';
-if($articleDisplayContent && $articleView!='partial') $target .= MYSQL_PREFIX.'event.content,';
-$target .= MYSQL_PREFIX.'event.link,';
-if($articleDisplayDate) $target .= MYSQL_PREFIX.'event.pubdate,';
-if($articleDisplayAuthor) $target .= MYSQL_PREFIX.'event.creator,';
-$target .= MYSQL_PREFIX.'event.id';
+$target = '`'.MYSQL_PREFIX.'event`.`title`,`'.MYSQL_PREFIX.'event`.`unread`,`'.MYSQL_PREFIX.'event`.`favorite`,`'.MYSQL_PREFIX.'event`.`feed`,';
+if($articleDisplayMode=='summary') $target .= '`'.MYSQL_PREFIX.'event`.`description`,';
+if($articleDisplayMode=='content') $target .= '`'.MYSQL_PREFIX.'event`.`content`,';
+if($articleDisplayLink) $target .= '`'.MYSQL_PREFIX.'event`.`link`,';
+if($articleDisplayDate) $target .= '`'.MYSQL_PREFIX.'event`.`pubdate`,';
+if($articleDisplayAuthor) $target .= '`'.MYSQL_PREFIX.'event`.`creator`,';
+$target .= '`'.MYSQL_PREFIX.'event`.`id`';
 
 $tpl->assign('target',$target);
 $tpl->assign('feeds','');
@@ -72,7 +72,7 @@ switch($action){
         $tpl->assign('currentFeed',$currentFeed);
         $numberOfItem = $eventManager->rowCount(array('feed'=>$currentFeed->getId()));
         $allowedOrder = array('date'=>'pubdate DESC','older'=>'pubdate','unread'=>'unread DESC,pubdate DESC');
-        $order = (isset($_['order'])?$allowedOrder[$_['order']]:$allowedOrder['date']);
+        $order = (isset($_['order'])?$allowedOrder[$_['order']]:$allowedOrder['unread']);
         $page = (isset($_['page'])?$_['page']:1);
         $pages = ceil($numberOfItem/$articlePerPages);
         $startArticle = ($page-1)*$articlePerPages;
@@ -81,19 +81,6 @@ switch($action){
         $tpl->assign('order',(isset($_['order'])?$_['order']:''));
 
     break;
-    /* AFFICHAGE DES EVENEMENTS D'UN FLUX EN PARTICULIER en mode non lus */
-    case 'selectedFeedNonLu':
-        $currentFeed = $feedManager->getById($_['feed']);
-        $tpl->assign('currentFeed',$currentFeed);
-        $filter = array('unread'=>1, 'feed'=>$currentFeed->getId());
-        $numberOfItem = $eventManager->rowCount($filter);
-        $order = 'pubdate DESC';
-        $page = (isset($_['page'])?$_['page']:1);
-        $pages = ceil($numberOfItem/$articlePerPages);
-        $startArticle = ($page-1)*$articlePerPages;
-        $events = $eventManager->loadAllOnlyColumn($target,$filter,$order,$startArticle.','.$articlePerPages);
-
-        break;
     /* AFFICHAGE DES EVENEMENTS D'UN DOSSIER EN PARTICULIER */
     case 'selectedFolder':
         $currentFolder = $folderManager->getById($_['folder']);
@@ -102,7 +89,7 @@ switch($action){
         $page = (isset($_['page'])?$_['page']:1);
         $pages = ceil($numberOfItem/$articlePerPages);
         $startArticle = ($page-1)*$articlePerPages;
-        if($articleDisplayFolderSort) {$order = MYSQL_PREFIX.'event.pubdate desc';} else {$order = MYSQL_PREFIX.'event.pubdate asc';}
+        if($articleDisplayFolderSort) {$order = '`'.MYSQL_PREFIX.'event`.`pubdate` desc';} else {$order = '`'.MYSQL_PREFIX.'event`.`pubdate` asc';}
         $events = $currentFolder->getEvents($startArticle,$articlePerPages,$order,$target);
 
 
@@ -119,7 +106,10 @@ switch($action){
 
     /* AFFICHAGE DES EVENEMENTS NON LUS (COMPORTEMENT PAR DEFAUT) */
     case 'unreadEvents':
+    case 'wrongLogin':
+        $wrongLogin = true;
     default:
+        $wrongLogin = !empty($wrongLogin);
         $filter = array('unread'=>1);
         if($optionFeedIsVerbose) {
             $numberOfItem = $eventManager->rowCount($filter);
@@ -136,18 +126,25 @@ switch($action){
             $events = $eventManager->getEventsNotVerboseFeed($startArticle,$articlePerPages,$order,$target);
         }
         $tpl->assign('numberOfItem',$numberOfItem);
+        $tpl->assign('wrongLogin',$wrongLogin);
 
     break;
 }
 $tpl->assign('pages',$pages);
 $tpl->assign('page',$page);
 
-for($i=($page-PAGINATION_SCALE<=0?1:$page-PAGINATION_SCALE);$i<($page+PAGINATION_SCALE>$pages+1?$pages+1:$page+PAGINATION_SCALE);$i++){
+$paginationScale = $configurationManager->get('paginationScale');
+if (empty($paginationScale)) {
+    $configurationManager->put('paginationScale', 5);
+    $paginationScale = $configurationManager->get('paginationScale');
+}
+
+for($i=($page-$paginationScale<=0?1:$page-$paginationScale);$i<($page+$paginationScale>$pages+1?$pages+1:$page+$paginationScale);$i++){
     $pagesArray[]=$i;
 }
 $tpl->assign('pagesArray',$pagesArray);
-$tpl->assign('previousPages',($page-PAGINATION_SCALE<0?-1:$page-PAGINATION_SCALE-1));
-$tpl->assign('nextPages',($page+PAGINATION_SCALE>$pages+1?-1:$page+PAGINATION_SCALE));
+$tpl->assign('previousPages',($page-$paginationScale<0?-1:$page-$paginationScale-1));
+$tpl->assign('nextPages',($page+$paginationScale>$pages+1?-1:$page+$paginationScale));
 
 
 Plugin::callHook("index_post_treatment", array(&$events));
